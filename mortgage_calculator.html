@@ -109,6 +109,9 @@
       font-size: 1.2em;
       margin: 5px 0;
     }
+    .percent-green { color: green; font-size: 0.9em; }
+    .percent-red { color: red; font-size: 0.9em; }
+    .percent-blue { color: blue; font-size: 0.9em; }
     /* Table container styling */
     .table-container {
       max-height: 400px;
@@ -237,26 +240,32 @@
             <div class="summary-card">
               <h3>Down Payment</h3>
               <p>$<span id="downPaymentDollar"></span></p>
+              <p class="percent-green">(<span id="downPaymentPercentDisplay"></span> of House Price)</p>
             </div>
             <div class="summary-card">
               <h3>Loan Amount</h3>
               <p>$<span id="loanAmount"></span></p>
+              <p class="percent-green">(<span id="loanAmountPercentDisplay"></span> of House Price)</p>
             </div>
             <div class="summary-card">
               <h3>Initial Payment</h3>
               <p>$<span id="paymentPerPeriod"></span></p>
+              <p class="percent-green">(<span id="initialPaymentPercentDisplay"></span> of Loan Amount)</p>
             </div>
             <div class="summary-card">
               <h3>Total Payments</h3>
               <p>$<span id="sumOfPayments"></span></p>
+              <p class="percent-blue">(<span id="totalPaymentsPercentDisplay"></span> of Loan Amount)</p>
             </div>
             <div class="summary-card">
               <h3>Total Interest</h3>
               <p>$<span id="interestCost"></span></p>
+              <p class="percent-red">(<span id="totalInterestPercentDisplay"></span> of Loan Amount)</p>
             </div>
             <div class="summary-card">
               <h3>Payoff Time</h3>
               <p><span id="payoffTime"></span></p>
+              <p class="percent-blue">(<span id="payoffTimePercentDisplay"></span> of Original Term)</p>
             </div>
           </div>
           <p id="postSummary" style="font-weight:bold; text-align:center;"></p>
@@ -519,9 +528,9 @@
         }
         
         // Calculate overall payoff time (years and months)
-        let payoffYears = Math.floor(overallPeriod / paymentsPerYear);
-        let remainingPeriods = overallPeriod % paymentsPerYear;
-        let payoffMonths = Math.round((remainingPeriods / paymentsPerYear) * 12);
+        let payoffYearsCalc = Math.floor(overallPeriod / paymentsPerYear);
+        let remainingPeriodsCalc = overallPeriod % paymentsPerYear;
+        let payoffMonths = Math.round((remainingPeriodsCalc / paymentsPerYear) * 12);
         
         // Update summary display with formatted numbers
         document.getElementById("downPaymentDollar").textContent = formatNumber(downPaymentDollar);
@@ -529,9 +538,27 @@
         document.getElementById("paymentPerPeriod").textContent = formatNumber(initialScheduledPayment);
         document.getElementById("sumOfPayments").textContent = formatNumber(totalScheduledPaid + totalExtraPaid);
         document.getElementById("interestCost").textContent = formatNumber(totalInterestPaid);
-        document.getElementById("payoffTime").textContent = payoffYears + " years and " + payoffMonths + " months";
+        document.getElementById("payoffTime").textContent = payoffYearsCalc + " years and " + payoffMonths + " months";
         document.getElementById("postSummary").textContent = postSummaryText;
         document.getElementById("results").style.display = "block";
+        
+        // Calculate and update percentage values in the summary cards:
+        // Down Payment %
+        document.getElementById("downPaymentPercentDisplay").textContent = downPaymentPercent.toFixed(2) + "%";
+        // Loan Amount % of House Price = 100 - downPaymentPercent
+        document.getElementById("loanAmountPercentDisplay").textContent = (100 - downPaymentPercent).toFixed(2) + "%";
+        // Initial Payment as % of Loan Amount
+        let initialPaymentPerc = (initialScheduledPayment / loanAmount) * 100;
+        document.getElementById("initialPaymentPercentDisplay").textContent = initialPaymentPerc.toFixed(2) + "%";
+        // Total Payments as % of Loan Amount
+        let totalPaymentsPerc = ((totalScheduledPaid + totalExtraPaid) / loanAmount) * 100;
+        document.getElementById("totalPaymentsPercentDisplay").textContent = totalPaymentsPerc.toFixed(2) + "%";
+        // Total Interest as % of Loan Amount
+        let totalInterestPerc = (totalInterestPaid / loanAmount) * 100;
+        document.getElementById("totalInterestPercentDisplay").textContent = totalInterestPerc.toFixed(2) + "%";
+        // Payoff Time as % of Original Term
+        let payoffTimePerc = (payoffYearsCalc / loanYears) * 100;
+        document.getElementById("payoffTimePercentDisplay").textContent = payoffTimePerc.toFixed(2) + "%";
         
         // Build the amortization schedule table with formatted numbers
         let tableBody = "";
