@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lender Comparison - Mortgage Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 20px;
+    }
+    nav {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    nav a {
+      margin: 0 10px;
+      text-decoration: none;
+      color: #007bff;
+      font-weight: bold;
+    }
+    nav a:hover {
+      text-decoration: underline;
+    }
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px 30px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border-radius: 8px;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #333;
+    }
+    section {
+      margin-bottom: 30px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    input[type="number"],
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 15px;
+      margin-top: 15px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      font-size: 1em;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .table-container {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-top: 15px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9em;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #f1f1f1;
+    }
+    .summary-cards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      margin-top: 20px;
+    }
+    .summary-card {
+      flex: 1 1 30%;
+      background: #fff;
+      margin: 10px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .summary-card h3 {
+      margin-top: 0;
+      color: #007bff;
+    }
+    .summary-card p {
+      font-size: 1.1em;
+      margin: 5px 0;
+    }
+    .percent-green { color: green; font-size: 0.9em; }
+    .percent-red { color: red; font-size: 0.9em; }
+    .percent-blue { color: blue; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="mortgage_calculator.html">Calculator</a>
+    <a href="lender_comparison.html">Lender Comparison</a>
+  </nav>
+  <div class="container">
+    <h1>Lender Comparison</h1>
+
+    <!-- Common Mortgage Information -->
+    <section id="commonInfo">
+      <h2>Common Mortgage Information</h2>
+      <form id="commonForm">
+        <label for="commonHousePrice">House Price ($):</label>
+        <input type="number" id="commonHousePrice" placeholder="e.g., 500000" required>
+        <label for="commonDownPayment">Down Payment (%):</label>
+        <input type="number" id="commonDownPayment" placeholder="e.g., 20" required>
+        <label for="commonPaymentsPerYear"># of Payments per Year:</label>
+        <input type="number" id="commonPaymentsPerYear" placeholder="e.g., 12" required>
+      </form>
+    </section>
+
+    <!-- Lender Offer Input Section -->
+    <section id="vendorInputSection">
+      <h2>Enter Lender Offers</h2>
+      <button type="button" id="addVendorBtn">Add Lender</button>
+      <div class="table-container">
+        <table id="vendorTable">
+          <thead>
+            <tr>
+              <th>Lender Name</th>
+              <th>Interest Rate (%)</th>
+              <th>APR (%)</th>
+              <th>Fees ($)</th>
+              <th>Loan Term (Years)</th>
+              <th>Rating</th>
+              <th>Actions</th>
+              <th>Monthly Payment ($)</th>
+              <th>Total Interest ($)</th>
+              <th>Total Payment ($)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Vendor rows will be inserted dynamically -->
+          </tbody>
+        </table>
+      </div>
+      <button type="button" id="calculateVendorsBtn">Calculate Offers</button>
+    </section>
+
+    <!-- Vendor Summaries -->
+    <section id="vendorSummaries">
+      <h2>Lender Offer Summaries</h2>
+      <div class="summary-cards" id="summariesContainer">
+        <!-- Summary cards for each lender will be inserted here -->
+      </div>
+    </section>
+  </div>
+  
+  <script>
+    // Wait until the DOM is fully loaded.
+    document.addEventListener("DOMContentLoaded", function(){
+      // Helper function to format numbers with commas and 2 decimals.
+      function formatNumber(num) {
+        return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      
+      // Keys for localStorage
+      const LS_COMMON = "lenderComparison_common";
+      const LS_VENDORS = "lenderComparison_vendors";
+      
+      // References to DOM elements
+      const commonForm = document.getElementById("commonForm");
+      const commonHousePriceEl = document.getElementById("commonHousePrice");
+      const commonDownPaymentEl = document.getElementById("commonDownPayment");
+      const commonPaymentsPerYearEl = document.getElementById("commonPaymentsPerYear");
+      
+      const vendorTableBody = document.querySelector("#vendorTable tbody");
+      const addVendorBtn = document.getElementById("addVendorBtn");
+      const calculateVendorsBtn = document.getElementById("calculateVendorsBtn");
+      const summariesContainer = document.getElementById("summariesContainer");
+      
+      // Save and load common mortgage info
+      function saveCommonData() {
+        const commonData = {
+          housePrice: commonHousePriceEl.value,
+          downPayment: commonDownPaymentEl.value,
+          paymentsPerYear: commonPaymentsPerYearEl.value
+        };
+        localStorage.setItem(LS_COMMON, JSON.stringify(commonData));
+      }
+      
+      function loadCommonData() {
+        const data = localStorage.getItem(LS_COMMON);
+        if (data) {
+          const commonData = JSON.parse(data);
+          commonHousePriceEl.value = commonData.housePrice || "";
+          commonDownPaymentEl.value = commonData.downPayment || "";
+          commonPaymentsPerYearEl.value = commonData.paymentsPerYear || "";
+        }
+      }
+      
+      // Save vendor rows data
+      function saveVendorData() {
+        const vendors = [];
+        vendorTableBody.querySelectorAll("tr").forEach(row => {
+          const inputs = row.querySelectorAll("input");
+          vendors.push({
+            lenderName: inputs[0].value,
+            interestRate: inputs[1].value,
+            apr: inputs[2].value,
+            fees: inputs[3].value,
+            loanTerm: inputs[4].value,
+            rating: inputs[5].value
+          });
+        });
+        localStorage.setItem(LS_VENDORS, JSON.stringify(vendors));
+      }
+      
+      function loadVendorData() {
+        const data = localStorage.getItem(LS_VENDORS);
+        if (data) {
+          const vendors = JSON.parse(data);
+          vendors.forEach(vendor => {
+            createVendorRow(vendor);
+          });
+        }
+      }
+      
+      // Create a new vendor row.
+      // Optionally pass in a vendor object to prefill fields.
+      function createVendorRow(vendor = {}) {
+        const tr = document.createElement("tr");
+        
+        // Lender Name
+        const tdName = document.createElement("td");
+        const inputName = document.createElement("input");
+        inputName.type = "text";
+        inputName.placeholder = "Lender Name";
+        inputName.value = vendor.lenderName || "";
+        inputName.addEventListener("input", saveVendorData);
+        tdName.appendChild(inputName);
+        tr.appendChild(tdName);
+        
+        // Interest Rate (%)
+        const tdRate = document.createElement("td");
+        const inputRate = document.createElement("input");
+        inputRate.type = "number";
+        inputRate.placeholder = "e.g., 4.50";
+        inputRate.step = "any";
+        inputRate.value = vendor.interestRate || "";
+        inputRate.addEventListener("input", saveVendorData);
+        tdRate.appendChild(inputRate);
+        tr.appendChild(tdRate);
+        
+        // APR (%)
+        const tdAPR = document.createElement("td");
+        const inputAPR = document.createElement("input");
+        inputAPR.type = "number";
+        inputAPR.placeholder = "e.g., 4.65";
+        inputAPR.step = "any";
+        inputAPR.value = vendor.apr || "";
+        inputAPR.addEventListener("input", saveVendorData);
+        tdAPR.appendChild(inputAPR);
+        tr.appendChild(tdAPR);
+        
+        // Fees ($)
+        const tdFees = document.createElement("td");
+        const inputFees = document.createElement("input");
+        inputFees.type = "number";
+        inputFees.placeholder = "e.g., 1200";
+        inputFees.step = "any";
+        inputFees.value = vendor.fees || "";
+        inputFees.addEventListener("input", saveVendorData);
+        tdFees.appendChild(inputFees);
+        tr.appendChild(tdFees);
+        
+        // Loan Term (Years)
+        const tdTerm = document.createElement("td");
+        const inputTerm = document.createElement("input");
+        inputTerm.type = "number";
+        inputTerm.placeholder = "e.g., 30";
+        inputTerm.step = "any";
+        inputTerm.value = vendor.loanTerm || "";
+        inputTerm.addEventListener("input", saveVendorData);
+        tdTerm.appendChild(inputTerm);
+        tr.appendChild(tdTerm);
+        
+        // Rating
+        const tdRating = document.createElement("td");
+        const inputRating = document.createElement("input");
+        inputRating.type = "text";
+        inputRating.placeholder = "e.g., 4.5/5";
+        inputRating.value = vendor.rating || "";
+        inputRating.addEventListener("input", saveVendorData);
+        tdRating.appendChild(inputRating);
+        tr.appendChild(tdRating);
+        
+        // Actions: Remove button
+        const tdActions = document.createElement("td");
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.textContent = "Remove";
+        removeBtn.addEventListener("click", function(){
+          tr.remove();
+          saveVendorData();
+        });
+        tdActions.appendChild(removeBtn);
+        tr.appendChild(tdActions);
+        
+        // Calculated columns: Monthly Payment, Total Interest, Total Payment
+        const tdMonthly = document.createElement("td");
+        tdMonthly.textContent = "-";
+        tr.appendChild(tdMonthly);
+        
+        const tdTotalInterest = document.createElement("td");
+        tdTotalInterest.textContent = "-";
+        tr.appendChild(tdTotalInterest);
+        
+        const tdTotalPayment = document.createElement("td");
+        tdTotalPayment.textContent = "-";
+        tr.appendChild(tdTotalPayment);
+        
+        vendorTableBody.appendChild(tr);
+        saveVendorData();
+      }
+      
+      // Event listeners on common form inputs to save data
+      commonHousePriceEl.addEventListener("input", saveCommonData);
+      commonDownPaymentEl.addEventListener("input", saveCommonData);
+      commonPaymentsPerYearEl.addEventListener("input", saveCommonData);
+      
+      // Add vendor row button
+      addVendorBtn.addEventListener("click", function(){
+        createVendorRow();
+      });
+      
+      // Calculation: When "Calculate Offers" is clicked.
+      calculateVendorsBtn.addEventListener("click", function(){
+        // Get common mortgage information
+        const commonHousePrice = parseFloat(commonHousePriceEl.value);
+        const commonDownPayment = parseFloat(commonDownPaymentEl.value);
+        const commonPaymentsPerYear = parseFloat(commonPaymentsPerYearEl.value);
+        
+        if(isNaN(commonHousePrice) || isNaN(commonDownPayment) || isNaN(commonPaymentsPerYear)) {
+          alert("Please fill in all common mortgage fields.");
+          return;
+        }
+        
+        // Calculate common loan amount
+        const downPaymentDollar = commonHousePrice * (commonDownPayment / 100);
+        const commonLoanAmount = commonHousePrice - downPaymentDollar;
+        
+        // Clear previous summaries
+        summariesContainer.innerHTML = "";
+        
+        // Process each vendor row
+        const vendorRows = vendorTableBody.querySelectorAll("tr");
+        vendorRows.forEach((row, index) => {
+          const inputs = row.querySelectorAll("input");
+          const lenderName = inputs[0].value || ("Lender " + (index + 1));
+          const interestRate = parseFloat(inputs[1].value);
+          const apr = parseFloat(inputs[2].value);
+          const fees = parseFloat(inputs[3].value) || 0;
+          const loanTerm = parseFloat(inputs[4].value);
+          const rating = inputs[5].value || "N/A";
+          
+          // Skip row if required fields are missing.
+          if (isNaN(interestRate) || isNaN(loanTerm)) return;
+          
+          // Calculate monthly payment using mortgage formula:
+          const r = (interestRate / 100) / commonPaymentsPerYear;
+          const n = loanTerm * commonPaymentsPerYear;
+          const monthlyPayment = (commonLoanAmount * r) / (1 - Math.pow(1 + r, -n));
+          const totalPayment = monthlyPayment * n;
+          const totalInterest = totalPayment - commonLoanAmount;
+          
+          // Update calculated cells in the row (columns 8, 9, 10; index 7,8,9)
+          row.cells[7].textContent = formatNumber(monthlyPayment);
+          row.cells[8].textContent = formatNumber(totalInterest);
+          row.cells[9].textContent = formatNumber(totalPayment);
+          
+          // Create a summary card for this vendor
+          const card = document.createElement("div");
+          card.classList.add("summary-card");
+          card.innerHTML = `
+            <h3>${lenderName}</h3>
+            <p>Loan Amount: $${formatNumber(commonLoanAmount)} <span class="percent-green">(${(100 - commonDownPayment).toFixed(2)}% of House Price)</span></p>
+            <p>Monthly Payment: $${formatNumber(monthlyPayment)} <span class="percent-green">(${((monthlyPayment / commonLoanAmount)*100).toFixed(2)}% of Loan Amount)</span></p>
+            <p>Total Interest: $${formatNumber(totalInterest)} <span class="percent-red">(${((totalInterest / commonLoanAmount)*100).toFixed(2)}% of Loan Amount)</span></p>
+            <p>Total Payment: $${formatNumber(totalPayment)}</p>
+            <p>Loan Term: ${loanTerm} years</p>
+            <p>Fees: $${formatNumber(fees)}</p>
+            <p>Rating: ${rating}</p>
+          `;
+          summariesContainer.appendChild(card);
+        });
+      });
+      
+      // Load saved data on page load
+      loadCommonData();
+      loadVendorData();
+    });
+  </script>
+</body>
+</html>

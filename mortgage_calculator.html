@@ -148,6 +148,11 @@
   </style>
 </head>
 <body>
+  <nav style="text-align:center; margin-bottom:20px;">
+    <a href="mortgage_calculator.html" style="margin-right:15px; text-decoration:none; color:#007bff;">Calculator</a>
+    <a href="lender_comparison.html" style="text-decoration:none; color:#007bff;">Lender Comparison</a>
+  </nav>
+  
   <div class="container">
     <h1>Mortgage, Refinance & ARM Calculator</h1>
     <div class="flex-container">
@@ -214,6 +219,9 @@
               <input type="number" id="armRefinanceInterestRate" placeholder="e.g., 4.500" step="any" />
               <label for="armRefinanceLoanTerm">New Loan Term (Years):</label>
               <input type="number" id="armRefinanceLoanTerm" placeholder="e.g., 20" step="any" />
+              <!-- New field for ARM refinance cost -->
+              <label for="armRefinanceCost">Refinance Cost ($):</label>
+              <input type="number" id="armRefinanceCost" placeholder="e.g., 2000" step="any" />
             </div>
           </div>
 
@@ -228,6 +236,10 @@
 
             <label for="refinanceLoanTerm">New Loan Term (Years):</label>
             <input type="number" id="refinanceLoanTerm" placeholder="e.g., 20" step="any" />
+
+            <!-- New field for fixed refinance cost -->
+            <label for="refinanceCost">Refinance Cost ($):</label>
+            <input type="number" id="refinanceCost" placeholder="e.g., 2000" step="any" />
           </div>
 
           <button type="button" id="calculateBtn">Calculate</button>
@@ -266,6 +278,14 @@
               <h3>Payoff Time</h3>
               <p><span id="payoffTime"></span></p>
               <p class="percent-blue">(<span id="payoffTimePercentDisplay"></span> of Original Term)</p>
+            </div>
+            <div class="summary-card">
+              <h3>New EMI</h3>
+              <p>$<span id="newEmi">N/A</span></p>
+            </div>
+            <div class="summary-card">
+              <h3>Break-even Period</h3>
+              <p><span id="breakeven">N/A</span></p>
             </div>
           </div>
           <p id="postSummary" style="font-weight:bold; text-align:center;"></p>
@@ -408,6 +428,7 @@
         let overallPeriod = 0;
         let remainingBalance = loanAmount;
         let postSummaryText = "";
+        let initialScheduledPayment = 0;
         
         // Helper function to simulate a phase (given rate, phase limit, and scheduled payment)
         function simulatePhase(ratePerPeriod, phaseLimit, phaseScheduledPayment) {
@@ -449,7 +470,6 @@
         }
         
         // Simulation for Fixed Rate scenario (with optional refinance)
-        let initialScheduledPayment = 0;
         if(mortgageType === "fixed"){
           const ratePerPeriod = (initialInterestRate / 100) / paymentsPerYear;
           const totalScheduledPayments = loanYears * paymentsPerYear;
@@ -474,9 +494,29 @@
               const newScheduledPayment = (remainingBalance * newRatePerPeriod) / (1 - Math.pow(1 + newRatePerPeriod, -newTotalPayments));
               simulatePhase(newRatePerPeriod, 5000, newScheduledPayment);
               postSummaryText = "Refinance occurred after " + refiYears + " years. New payment: $" + formatNumber(newScheduledPayment);
+              
+              // Calculate breakeven period if refinance cost is provided.
+              let refiCost = parseFloat(document.getElementById("refinanceCost").value) || 0;
+              if(refiCost > 0) {
+                let monthlySavings = initialScheduledPayment - newScheduledPayment;
+                if(monthlySavings > 0) {
+                  let breakEvenMonths = refiCost / monthlySavings;
+                  let yearsBreakEven = Math.floor(breakEvenMonths / paymentsPerYear);
+                  let monthsBreakEven = Math.round(breakEvenMonths % paymentsPerYear);
+                  postSummaryText += " | Break-even in " + breakEvenMonths.toFixed(0) + " months (" + yearsBreakEven + " years and " + monthsBreakEven + " months).";
+                  document.getElementById("breakeven").textContent = breakEvenMonths.toFixed(0) + " months (" + yearsBreakEven + " years, " + monthsBreakEven + " months)";
+                } else {
+                  document.getElementById("breakeven").textContent = "No savings";
+                }
+              } else {
+                document.getElementById("breakeven").textContent = "N/A";
+              }
+              document.getElementById("newEmi").textContent = formatNumber(newScheduledPayment);
             }
           } else {
             simulatePhase(ratePerPeriod, loanYears * paymentsPerYear, initialScheduledPayment);
+            document.getElementById("newEmi").textContent = "N/A";
+            document.getElementById("breakeven").textContent = "N/A";
           }
         }
         // Simulation for ARM scenario
@@ -507,6 +547,23 @@
               const newScheduledPayment = (remainingBalance * newRatePerPeriod) / (1 - Math.pow(1 + newRatePerPeriod, -newTotalPayments));
               simulatePhase(newRatePerPeriod, 5000, newScheduledPayment);
               postSummaryText = "ARM refinance occurred after " + armRefiYears + " years. New payment: $" + formatNumber(newScheduledPayment);
+              
+              // Calculate breakeven period for ARM refinance if cost is provided.
+              let armRefiCost = parseFloat(document.getElementById("armRefinanceCost").value) || 0;
+              if(armRefiCost > 0) {
+                let monthlySavings = initialScheduledPayment - newScheduledPayment;
+                if(monthlySavings > 0) {
+                  let breakEvenMonths = armRefiCost / monthlySavings;
+                  let yearsBreakEven = Math.floor(breakEvenMonths / paymentsPerYear);
+                  let monthsBreakEven = Math.round(breakEvenMonths % paymentsPerYear);
+                  document.getElementById("breakeven").textContent = breakEvenMonths.toFixed(0) + " months (" + yearsBreakEven + " years, " + monthsBreakEven + " months)";
+                } else {
+                  document.getElementById("breakeven").textContent = "No savings";
+                }
+              } else {
+                document.getElementById("breakeven").textContent = "N/A";
+              }
+              document.getElementById("newEmi").textContent = formatNumber(newScheduledPayment);
             }
           } else { // Adjust rate after fixed period
             simulatePhase(initialRatePerPeriod, fixedPeriodPayments, initialScheduledPayment);
@@ -523,6 +580,8 @@
               const newScheduledPayment = (remainingBalance * newRatePerPeriod) / (1 - Math.pow(1 + newRatePerPeriod, -newTotalPayments));
               simulatePhase(newRatePerPeriod, 5000, newScheduledPayment);
               postSummaryText = "ARM adjusted after " + armFixedPeriod + " years. New payment: $" + formatNumber(newScheduledPayment);
+              document.getElementById("newEmi").textContent = formatNumber(newScheduledPayment);
+              document.getElementById("breakeven").textContent = "N/A";
             }
           }
         }
@@ -609,21 +668,18 @@
                 label: 'Remaining Balance ($)',
                 data: remainingBalances,
                 fill: false,
-                borderColor: 'blue',
                 tension: 0.1
               },
               {
                 label: 'Cumulative Principal Paid ($)',
                 data: cumPrincipal,
                 fill: false,
-                borderColor: 'green',
                 tension: 0.1
               },
               {
                 label: 'Cumulative Interest Paid ($)',
                 data: cumInterest,
                 fill: false,
-                borderColor: 'red',
                 tension: 0.1
               }
             ]
@@ -647,8 +703,7 @@
           data: {
             labels: ['Principal ($)', 'Interest ($)'],
             datasets: [{
-              data: [principalTotal, interestTotal],
-              backgroundColor: ['#28a745', '#dc3545']
+              data: [principalTotal, interestTotal]
             }]
           },
           options: {
