@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mortgage, Refinance & ARM Calculator</title>
+  <!-- Include Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px 30px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border-radius: 8px;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #333;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input[type="number"], select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .radio-group label {
+      display: inline-block;
+      margin-right: 20px;
+      font-weight: normal;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 20px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .note {
+      font-size: 0.9em;
+      color: #555;
+      margin-top: 10px;
+    }
+    .flex-container {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .flex-left, .flex-right {
+      flex: 1;
+      min-width: 300px;
+      box-sizing: border-box;
+      padding: 10px;
+    }
+    .section {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fdfdfd;
+    }
+    /* Summary cards styling */
+    .results {
+      margin-top: 20px;
+      padding: 20px;
+      background: #e9ecef;
+      border-radius: 4px;
+    }
+    .summary-cards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    .summary-card {
+      flex: 1 1 30%;
+      background: #fff;
+      margin: 10px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .summary-card h3 {
+      margin-top: 0;
+      color: #007bff;
+    }
+    .summary-card p {
+      font-size: 1.2em;
+      margin: 5px 0;
+    }
+    /* Table container styling */
+    .table-container {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: right;
+      font-size: 0.9em;
+    }
+    th {
+      background: #f1f1f1;
+    }
+    td:first-child, th:first-child {
+      text-align: center;
+    }
+    /* Chart container styling */
+    .chart-container {
+      margin-top: 30px;
+      background: #fff;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Mortgage, Refinance & ARM Calculator</h1>
+    <div class="flex-container">
+      <div class="flex-left">
+        <form id="mortgageForm">
+          <!-- Mortgage Type -->
+          <label>Mortgage Type:</label>
+          <div class="radio-group">
+            <label><input type="radio" name="mortgageType" value="fixed" checked> Fixed Rate</label>
+            <label><input type="radio" name="mortgageType" value="arm"> ARM (Adjustable Rate)</label>
+          </div>
+
+          <!-- Basic Loan Inputs -->
+          <label for="housePrice">House Price ($):</label>
+          <input type="number" id="housePrice" placeholder="e.g., 1631000" step="any" required />
+
+          <label for="downPaymentPercent">Down Payment (%):</label>
+          <input type="number" id="downPaymentPercent" placeholder="e.g., 20" step="any" required />
+
+          <!-- This field acts as the fixed rate or initial ARM rate -->
+          <label for="annualInterestRate" id="initialRateLabel">Annual Interest Rate (%):</label>
+          <input type="number" id="annualInterestRate" placeholder="e.g., 5.600" step="any" required />
+
+          <label for="loanYears">Life of Loan (Years):</label>
+          <input type="number" id="loanYears" placeholder="e.g., 30" required />
+
+          <label for="paymentsPerYear"># of Payments per Year:</label>
+          <input type="number" id="paymentsPerYear" placeholder="e.g., 12" required />
+
+          <!-- Extra Payment Options -->
+          <label for="extraPaymentAmount">Extra Payment Amount (applied to principal):</label>
+          <input type="number" id="extraPaymentAmount" placeholder="e.g., 200" step="any" />
+
+          <label for="extraPaymentFrequency">Extra Payment Frequency:</label>
+          <select id="extraPaymentFrequency">
+            <option value="none">None</option>
+            <option value="month">Per Month</option>
+            <option value="quarter">Per Quarter</option>
+            <option value="6months">Every 6 Months</option>
+            <option value="year">Per Year</option>
+          </select>
+
+          <!-- ARM Options (displayed only if ARM is selected) -->
+          <div id="armOptions" class="section" style="display: none;">
+            <h2>ARM Options</h2>
+            <label for="armFixedPeriod">Initial Fixed Period (Years):</label>
+            <input type="number" id="armFixedPeriod" placeholder="e.g., 7" step="any" />
+
+            <label>After the fixed period, choose an option:</label>
+            <div class="radio-group">
+              <label><input type="radio" name="armPostOption" value="adjust" checked> Adjust Rate</label>
+              <label><input type="radio" name="armPostOption" value="refinance"> Refinance</label>
+            </div>
+
+            <div id="armAdjustOptions">
+              <label for="armNewInterestRate">New ARM Interest Rate (%) after fixed period:</label>
+              <input type="number" id="armNewInterestRate" placeholder="e.g., 6.000" step="any" />
+            </div>
+
+            <div id="armRefinanceOptions" style="display: none;">
+              <label for="armRefinanceYears">Refinance Before Fixed Period Ends (Years):</label>
+              <input type="number" id="armRefinanceYears" placeholder="e.g., 5" step="any" />
+              <label for="armRefinanceInterestRate">New Refinance Interest Rate (%):</label>
+              <input type="number" id="armRefinanceInterestRate" placeholder="e.g., 4.500" step="any" />
+              <label for="armRefinanceLoanTerm">New Loan Term (Years):</label>
+              <input type="number" id="armRefinanceLoanTerm" placeholder="e.g., 20" step="any" />
+            </div>
+          </div>
+
+          <!-- Refinance Options for fixed rate scenario -->
+          <div id="refiOptions" class="section">
+            <h2>Refinance Options (Optional)</h2>
+            <label for="refinanceYears">Refinance After (Years):</label>
+            <input type="number" id="refinanceYears" placeholder="e.g., 10" step="any" />
+
+            <label for="refinanceInterestRate">New Interest Rate (%):</label>
+            <input type="number" id="refinanceInterestRate" placeholder="e.g., 4.500" step="any" />
+
+            <label for="refinanceLoanTerm">New Loan Term (Years):</label>
+            <input type="number" id="refinanceLoanTerm" placeholder="e.g., 20" step="any" />
+          </div>
+
+          <button type="button" id="calculateBtn">Calculate</button>
+        </form>
+        
+        <!-- Enhanced Summary Display -->
+        <div class="results" id="results" style="display: none;">
+          <h2>Summary</h2>
+          <div class="summary-cards">
+            <div class="summary-card">
+              <h3>Down Payment</h3>
+              <p>$<span id="downPaymentDollar"></span></p>
+            </div>
+            <div class="summary-card">
+              <h3>Loan Amount</h3>
+              <p>$<span id="loanAmount"></span></p>
+            </div>
+            <div class="summary-card">
+              <h3>Initial Payment</h3>
+              <p>$<span id="paymentPerPeriod"></span></p>
+            </div>
+            <div class="summary-card">
+              <h3>Total Payments</h3>
+              <p>$<span id="sumOfPayments"></span></p>
+            </div>
+            <div class="summary-card">
+              <h3>Total Interest</h3>
+              <p>$<span id="interestCost"></span></p>
+            </div>
+            <div class="summary-card">
+              <h3>Payoff Time</h3>
+              <p><span id="payoffTime"></span></p>
+            </div>
+          </div>
+          <p id="postSummary" style="font-weight:bold; text-align:center;"></p>
+        </div>
+        <p class="note">* All figures and charts update based on your selected scenario.</p>
+      </div>
+      
+      <!-- Right Column: Table and Charts -->
+      <div class="flex-right">
+        <!-- Table container with independent scrolling -->
+        <div class="table-container">
+          <h2>Amortization Schedule</h2>
+          <table id="scheduleTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Scheduled Payment</th>
+                <th>Extra Payment</th>
+                <th>Interest</th>
+                <th>Principal</th>
+                <th>Total Payment</th>
+                <th>Remaining Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Rows will be inserted here -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Charts (always visible) -->
+        <div class="chart-container">
+          <h2>Remaining Balance & Cumulative Totals Over Time</h2>
+          <canvas id="balanceChart"></canvas>
+        </div>
+        <div class="chart-container">
+          <h2>Loan Breakdown</h2>
+          <canvas id="breakdownChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Wait until the DOM is fully loaded.
+    window.addEventListener("DOMContentLoaded", function() {
+      // Helper to format numbers with commas and 2 decimals.
+      function formatNumber(num) {
+        return num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+      
+      // Toggle display of ARM options based on mortgage type selection
+      function toggleMortgageType() {
+        const mortgageType = document.querySelector('input[name="mortgageType"]:checked').value;
+        const armOptions = document.getElementById("armOptions");
+        const refiOptions = document.getElementById("refiOptions");
+        const initialRateLabel = document.getElementById("initialRateLabel");
+    
+        if (mortgageType === "arm") {
+          armOptions.style.display = "block";
+          initialRateLabel.textContent = "Initial Interest Rate (%) (for fixed period):";
+          refiOptions.style.display = "none";
+        } else {
+          armOptions.style.display = "none";
+          initialRateLabel.textContent = "Annual Interest Rate (%):";
+          refiOptions.style.display = "block";
+        }
+      }
+      
+      // Toggle ARM post options (adjust vs refinance)
+      function toggleArmPostOption() {
+        const armPostOption = document.querySelector('input[name="armPostOption"]:checked').value;
+        const armAdjustOptions = document.getElementById("armAdjustOptions");
+        const armRefinanceOptions = document.getElementById("armRefinanceOptions");
+        if (armPostOption === "adjust") {
+          armAdjustOptions.style.display = "block";
+          armRefinanceOptions.style.display = "none";
+        } else {
+          armAdjustOptions.style.display = "none";
+          armRefinanceOptions.style.display = "block";
+        }
+      }
+      
+      // Attach event listeners for toggling
+      document.querySelectorAll('input[name="mortgageType"]').forEach(radio => {
+        radio.addEventListener("change", toggleMortgageType);
+      });
+      document.querySelectorAll('input[name="armPostOption"]').forEach(radio => {
+        radio.addEventListener("change", toggleArmPostOption);
+      });
+      
+      // Global chart variables
+      let balanceChart, breakdownChart;
+      
+      // Attach event listener for Calculate button
+      document.getElementById("calculateBtn").addEventListener("click", function() {
+        // Get basic loan inputs
+        const housePrice = parseFloat(document.getElementById("housePrice").value);
+        const downPaymentPercent = parseFloat(document.getElementById("downPaymentPercent").value);
+        const initialInterestRate = parseFloat(document.getElementById("annualInterestRate").value);
+        const loanYears = parseFloat(document.getElementById("loanYears").value);
+        const paymentsPerYear = parseFloat(document.getElementById("paymentsPerYear").value);
+        const extraPayment = parseFloat(document.getElementById("extraPaymentAmount").value) || 0;
+        const extraPaymentFrequencyOption = document.getElementById("extraPaymentFrequency").value;
+        
+        // Determine mortgage type
+        const mortgageType = document.querySelector('input[name="mortgageType"]:checked').value;
+        
+        // Validate required fields
+        if (isNaN(housePrice) || isNaN(downPaymentPercent) || isNaN(initialInterestRate) || 
+            isNaN(loanYears) || isNaN(paymentsPerYear)) {
+          alert("Please fill in all required fields with valid numbers.");
+          return;
+        }
+        
+        // Calculate down payment and initial loan amount
+        const downPaymentDollar = housePrice * (downPaymentPercent / 100);
+        const loanAmount = housePrice - downPaymentDollar;
+        
+        // Determine extra payment frequency (in periods)
+        let extraFrequencyPeriod = 0;
+        if (extraPaymentFrequencyOption === "month") {
+          extraFrequencyPeriod = 1;
+        } else if (extraPaymentFrequencyOption === "quarter") {
+          extraFrequencyPeriod = 3;
+        } else if (extraPaymentFrequencyOption === "6months") {
+          extraFrequencyPeriod = 6;
+        } else if (extraPaymentFrequencyOption === "year") {
+          extraFrequencyPeriod = paymentsPerYear;
+        }
+        if (extraPaymentFrequencyOption === "none" || extraPayment === 0) {
+          extraFrequencyPeriod = Number.MAX_SAFE_INTEGER;
+        }
+        
+        // Initialize simulation arrays and counters
+        let simulationRows = [];
+        let totalScheduledPaid = 0;
+        let totalExtraPaid = 0;
+        let totalInterestPaid = 0;
+        let overallPeriod = 0;
+        let remainingBalance = loanAmount;
+        let postSummaryText = "";
+        
+        // Helper function to simulate a phase (given rate, phase limit, and scheduled payment)
+        function simulatePhase(ratePerPeriod, phaseLimit, phaseScheduledPayment) {
+          let phaseCounter = 0;
+          while (remainingBalance > 0.01 && phaseCounter < phaseLimit && overallPeriod < 5000) {
+            overallPeriod++;
+            phaseCounter++;
+            let interestPayment = remainingBalance * ratePerPeriod;
+            let currentScheduledPayment = phaseScheduledPayment;
+            if (remainingBalance + interestPayment < currentScheduledPayment) {
+              currentScheduledPayment = remainingBalance + interestPayment;
+            }
+            let scheduledPrincipal = currentScheduledPayment - interestPayment;
+            let extraPaymentApplied = 0;
+            if (overallPeriod % extraFrequencyPeriod === 0) {
+              extraPaymentApplied = extraPayment;
+              if (extraPaymentApplied > (remainingBalance - scheduledPrincipal)) {
+                extraPaymentApplied = remainingBalance - scheduledPrincipal;
+              }
+            }
+            let totalPaymentForPeriod = currentScheduledPayment + extraPaymentApplied;
+            remainingBalance -= (scheduledPrincipal + extraPaymentApplied);
+            if (remainingBalance < 0) remainingBalance = 0;
+            
+            totalScheduledPaid += currentScheduledPayment;
+            totalExtraPaid += extraPaymentApplied;
+            totalInterestPaid += interestPayment;
+            
+            simulationRows.push({
+              period: overallPeriod,
+              scheduledPayment: currentScheduledPayment,
+              extraPayment: extraPaymentApplied,
+              interestPayment: interestPayment,
+              principalPayment: scheduledPrincipal,
+              totalPayment: totalPaymentForPeriod,
+              remainingBalance: remainingBalance
+            });
+          }
+        }
+        
+        // Simulation for Fixed Rate scenario (with optional refinance)
+        let initialScheduledPayment = 0;
+        if(mortgageType === "fixed"){
+          const ratePerPeriod = (initialInterestRate / 100) / paymentsPerYear;
+          const totalScheduledPayments = loanYears * paymentsPerYear;
+          initialScheduledPayment = (loanAmount * ratePerPeriod) / (1 - Math.pow(1 + ratePerPeriod, -totalScheduledPayments));
+          
+          const refiYears = parseFloat(document.getElementById("refinanceYears").value) || 0;
+          const refiInterestRate = parseFloat(document.getElementById("refinanceInterestRate").value) || 0;
+          const refiLoanTerm = parseFloat(document.getElementById("refinanceLoanTerm").value) || 0;
+          
+          if(refiYears > 0 && refiInterestRate > 0 && refiLoanTerm > 0){
+            const refinanceLimit = refiYears * paymentsPerYear;
+            simulatePhase(ratePerPeriod, refinanceLimit, initialScheduledPayment);
+            
+            if(remainingBalance > 0.01){
+              simulationRows.push({
+                period: overallPeriod + 1,
+                note: "Refinance begins here"
+              });
+              overallPeriod++;
+              const newRatePerPeriod = (refiInterestRate / 100) / paymentsPerYear;
+              const newTotalPayments = refiLoanTerm * paymentsPerYear;
+              const newScheduledPayment = (remainingBalance * newRatePerPeriod) / (1 - Math.pow(1 + newRatePerPeriod, -newTotalPayments));
+              simulatePhase(newRatePerPeriod, 5000, newScheduledPayment);
+              postSummaryText = "Refinance occurred after " + refiYears + " years. New payment: $" + formatNumber(newScheduledPayment);
+            }
+          } else {
+            simulatePhase(ratePerPeriod, loanYears * paymentsPerYear, initialScheduledPayment);
+          }
+        }
+        // Simulation for ARM scenario
+        else if(mortgageType === "arm"){
+          const initialRatePerPeriod = (initialInterestRate / 100) / paymentsPerYear;
+          const totalScheduledPayments = loanYears * paymentsPerYear;
+          initialScheduledPayment = (loanAmount * initialRatePerPeriod) / (1 - Math.pow(1 + initialRatePerPeriod, -totalScheduledPayments));
+          
+          const armFixedPeriod = parseFloat(document.getElementById("armFixedPeriod").value) || 7;
+          const fixedPeriodPayments = armFixedPeriod * paymentsPerYear;
+          const armPostOption = document.querySelector('input[name="armPostOption"]:checked').value;
+          
+          if(armPostOption === "refinance"){
+            const armRefiYears = parseFloat(document.getElementById("armRefinanceYears").value) || armFixedPeriod;
+            const armRefiLimit = armRefiYears * paymentsPerYear;
+            simulatePhase(initialRatePerPeriod, armRefiLimit, initialScheduledPayment);
+            
+            if(remainingBalance > 0.01){
+              simulationRows.push({
+                period: overallPeriod + 1,
+                note: "Refinance begins here (ARM scenario)"
+              });
+              overallPeriod++;
+              const armRefiInterestRate = parseFloat(document.getElementById("armRefinanceInterestRate").value) || initialInterestRate;
+              const armRefiLoanTerm = parseFloat(document.getElementById("armRefinanceLoanTerm").value) || (loanYears - armRefiYears);
+              const newRatePerPeriod = (armRefiInterestRate / 100) / paymentsPerYear;
+              const newTotalPayments = armRefiLoanTerm * paymentsPerYear;
+              const newScheduledPayment = (remainingBalance * newRatePerPeriod) / (1 - Math.pow(1 + newRatePerPeriod, -newTotalPayments));
+              simulatePhase(newRatePerPeriod, 5000, newScheduledPayment);
+              postSummaryText = "ARM refinance occurred after " + armRefiYears + " years. New payment: $" + formatNumber(newScheduledPayment);
+            }
+          } else { // Adjust rate after fixed period
+            simulatePhase(initialRatePerPeriod, fixedPeriodPayments, initialScheduledPayment);
+            if(remainingBalance > 0.01){
+              simulationRows.push({
+                period: overallPeriod + 1,
+                note: "ARM rate adjusts here"
+              });
+              overallPeriod++;
+              const armNewInterestRate = parseFloat(document.getElementById("armNewInterestRate").value) || initialInterestRate;
+              const remainingTerm = loanYears - armFixedPeriod;
+              const newTotalPayments = remainingTerm * paymentsPerYear;
+              const newRatePerPeriod = (armNewInterestRate / 100) / paymentsPerYear;
+              const newScheduledPayment = (remainingBalance * newRatePerPeriod) / (1 - Math.pow(1 + newRatePerPeriod, -newTotalPayments));
+              simulatePhase(newRatePerPeriod, 5000, newScheduledPayment);
+              postSummaryText = "ARM adjusted after " + armFixedPeriod + " years. New payment: $" + formatNumber(newScheduledPayment);
+            }
+          }
+        }
+        
+        // Calculate overall payoff time (years and months)
+        let payoffYears = Math.floor(overallPeriod / paymentsPerYear);
+        let remainingPeriods = overallPeriod % paymentsPerYear;
+        let payoffMonths = Math.round((remainingPeriods / paymentsPerYear) * 12);
+        
+        // Update summary display with formatted numbers
+        document.getElementById("downPaymentDollar").textContent = formatNumber(downPaymentDollar);
+        document.getElementById("loanAmount").textContent = formatNumber(loanAmount);
+        document.getElementById("paymentPerPeriod").textContent = formatNumber(initialScheduledPayment);
+        document.getElementById("sumOfPayments").textContent = formatNumber(totalScheduledPaid + totalExtraPaid);
+        document.getElementById("interestCost").textContent = formatNumber(totalInterestPaid);
+        document.getElementById("payoffTime").textContent = payoffYears + " years and " + payoffMonths + " months";
+        document.getElementById("postSummary").textContent = postSummaryText;
+        document.getElementById("results").style.display = "block";
+        
+        // Build the amortization schedule table with formatted numbers
+        let tableBody = "";
+        simulationRows.forEach(function(row) {
+          tableBody += "<tr>";
+          tableBody += "<td>" + row.period + "</td>";
+          if(row.note){
+            tableBody += "<td colspan='6' style='text-align:left; font-style:italic;'>" + row.note + "</td>";
+          } else {
+            tableBody += "<td>" + formatNumber(row.scheduledPayment) + "</td>";
+            tableBody += "<td>" + formatNumber(row.extraPayment) + "</td>";
+            tableBody += "<td>" + formatNumber(row.interestPayment) + "</td>";
+            tableBody += "<td>" + formatNumber(row.principalPayment) + "</td>";
+            tableBody += "<td>" + formatNumber(row.totalPayment) + "</td>";
+            tableBody += "<td>" + formatNumber(row.remainingBalance) + "</td>";
+          }
+          tableBody += "</tr>";
+        });
+        document.querySelector("#scheduleTable tbody").innerHTML = tableBody;
+        
+        // Prepare chart data for the "Remaining Balance & Cumulative Totals Over Time" chart
+        let periods = [];
+        let remainingBalances = [];
+        let cumPrincipal = [];
+        let cumInterest = [];
+        let totalPrincipalPaid = 0;
+        let totalInterestAcc = 0;
+        
+        simulationRows.forEach(function(row) {
+          if (!row.note) {
+            periods.push(row.period);
+            remainingBalances.push(parseFloat(row.remainingBalance.toFixed(2)));
+            totalPrincipalPaid += (row.principalPayment + row.extraPayment);
+            totalInterestAcc += row.interestPayment;
+            cumPrincipal.push(parseFloat(totalPrincipalPaid.toFixed(2)));
+            cumInterest.push(parseFloat(totalInterestAcc.toFixed(2)));
+          }
+        });
+        
+        // Build the "Remaining Balance & Cumulative Totals Over Time" chart
+        if (balanceChart) { balanceChart.destroy(); }
+        balanceChart = new Chart(document.getElementById("balanceChart"), {
+          type: 'line',
+          data: {
+            labels: periods,
+            datasets: [
+              {
+                label: 'Remaining Balance ($)',
+                data: remainingBalances,
+                fill: false,
+                borderColor: 'blue',
+                tension: 0.1
+              },
+              {
+                label: 'Cumulative Principal Paid ($)',
+                data: cumPrincipal,
+                fill: false,
+                borderColor: 'green',
+                tension: 0.1
+              },
+              {
+                label: 'Cumulative Interest Paid ($)',
+                data: cumInterest,
+                fill: false,
+                borderColor: 'red',
+                tension: 0.1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              x: { title: { display: true, text: 'Payment Period' } },
+              y: { title: { display: true, text: 'Amount ($)' }, beginAtZero: true }
+            }
+          }
+        });
+        
+        // Build the Loan Breakdown chart (Principal vs Interest)
+        const principalTotal = loanAmount;
+        const interestTotal = totalInterestPaid;
+        
+        if (breakdownChart) { breakdownChart.destroy(); }
+        breakdownChart = new Chart(document.getElementById("breakdownChart"), {
+          type: 'doughnut',
+          data: {
+            labels: ['Principal ($)', 'Interest ($)'],
+            datasets: [{
+              data: [principalTotal, interestTotal],
+              backgroundColor: ['#28a745', '#dc3545']
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'bottom' },
+              title: { display: true, text: 'Loan Breakdown' }
+            }
+          }
+        });
+      });
+      
+      // Initialize toggles on load
+      toggleMortgageType();
+      toggleArmPostOption();
+    });
+  </script>
+</body>
+</html>
